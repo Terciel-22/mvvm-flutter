@@ -105,7 +105,7 @@ In Flutter, MVVM (Model-View-ViewModel) is a design pattern that separates the p
 
 With this structure, we can easily manage the `Person` data using the `PersonViewModel` and update the UI using the `PersonPage`. This separation of concerns makes our code more modular and easier to maintain.
 
-#mvvm-flutter-firebase
+# mvvm-flutter-firebase
 
 MVVM (Model-View-ViewModel) is an architectural pattern that separates an application into three layers: the Model layer (data), the View layer (UI), and the ViewModel layer (business logic). In Flutter, we can implement MVVM architecture to make our code more modular, testable, and maintainable. Here's an example of a simple MVVM structure in Flutter using Firebase:
 
