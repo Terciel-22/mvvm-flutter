@@ -206,3 +206,150 @@ class MyApp extends StatelessWidget {
 ```
 
 In this example, we use Firebase Authentication and Firestore to authenticate and store user data. The `User` class represents a user object with an `id` and an `email`. The `UserViewModel` class contains the logic for signing in and out, as well as storing the current user. The `HomeView` class displays the user's email and a sign-out button. When the user signs out, the `HomeView` updates automatically to show a message to the user.
+
+# mvvm-flutter-with-api-call-using-http-package
+
+Sure! Here's an example of a simple MVVM structure in Flutter with API CRUD operations using the `http` package for making HTTP requests:
+
+1. Model:
+```dart
+class User {
+  final int id;
+  final String name;
+  final String email;
+
+  User({required this.id, required this.name, required this.email});
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+    };
+  }
+}
+```
+
+2. ViewModel:
+```dart
+import 'package:http/http.dart' as http;
+
+class UserViewModel {
+  final String apiUrl = 'https://example.com/api/users';
+
+  Future<List<User>> getUsers() async {
+    final response = await http.get(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonResponse = jsonDecode(response.body);
+      return jsonResponse.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load users');
+    }
+  }
+
+  Future<User> createUser(User user) async {
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(user.toJson()),
+    );
+
+    if (response.statusCode == 201) {
+      return User.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to create user');
+    }
+  }
+
+  Future<void> updateUser(User user) async {
+    final response = await http.put(
+      Uri.parse('$apiUrl/${user.id}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(user.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update user');
+    }
+  }
+
+  Future<void> deleteUser(int id) async {
+    final response = await http.delete(Uri.parse('$apiUrl/$id'));
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete user');
+    }
+  }
+}
+```
+
+3. View:
+```dart
+import 'package:flutter/material.dart';
+import 'package:your_app_name/view_model.dart';
+
+class UserListPage extends StatefulWidget {
+  @override
+  _UserListPageState createState() => _UserListPageState();
+}
+
+class _UserListPageState extends State<UserListPage> {
+  final UserViewModel _userViewModel = UserViewModel();
+  List<User> _users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    final users = await _userViewModel.getUsers();
+    setState(() {
+      _users = users;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('User List'),
+      ),
+      body: ListView.builder(
+        itemCount: _users.length,
+        itemBuilder: (context, index) {
+          final user = _users[index];
+          return ListTile(
+            title: Text(user.name),
+            subtitle: Text(user.email),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final newUser = User(id: 0, name: 'New User', email: 'newuser@example.com');
+          final createdUser = await _userViewModel.createUser(newUser);
+          setState(() {
+            _users.add(createdUser);
+          });
+        },
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+```
+
+In this example, we have a `User` model that represents a user with an `id`, `name`, and `email` property. The `UserViewModel` is responsible for making HTTP requests to the API and returning data to the view. It has methods for `getUsers()`, `createUser()`, `updateUser()`, and `deleteUser()` that make requests to the API. The `UserListPage` is the view that displays a list of users and allows the user to add new users. It uses the `UserViewModel` to load the list of users and to create new users.
+
+This example is just one way of implementing MVVM in Flutter, and there are many other ways to structure your code depending on your specific needs and preferences.
