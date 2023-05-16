@@ -353,3 +353,266 @@ class _UserListPageState extends State<UserListPage> {
 In this example, we have a `User` model that represents a user with an `id`, `name`, and `email` property. The `UserViewModel` is responsible for making HTTP requests to the API and returning data to the view. It has methods for `getUsers()`, `createUser()`, `updateUser()`, and `deleteUser()` that make requests to the API. The `UserListPage` is the view that displays a list of users and allows the user to add new users. It uses the `UserViewModel` to load the list of users and to create new users.
 
 This example is just one way of implementing MVVM in Flutter, and there are many other ways to structure your code depending on your specific needs and preferences.
+
+# mvvm-flutter-with-api-call-using-http-package-2
+
+Sure, here's a simple MVVM structure in Flutter with API calls and CRUD operations using the `http` package.
+
+First, let's define the model class `User`:
+
+```dart
+class User {
+  final int id;
+  final String name;
+  final String email;
+
+  User({required this.id, required this.name, required this.email});
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+      };
+}
+```
+
+This is a simple `User` model with an `id`, `name`, and `email` properties. We also define a `fromJson` factory method to convert a JSON object to a `User` object, and a `toJson` method to convert a `User` object to a JSON object.
+
+Next, let's define the `UserService` class, which handles the API calls:
+
+```dart
+class UserService {
+  static const String baseUrl = 'https://jsonplaceholder.typicode.com';
+
+  Future<List<User>> getUsers() async {
+    final response = await http.get(Uri.parse('$baseUrl/users'));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load users');
+    }
+  }
+
+  Future<User> createUser(User user) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/users'),
+      body: jsonEncode(user.toJson()),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return User.fromJson(data);
+    } else {
+      throw Exception('Failed to create user');
+    }
+  }
+
+  Future<void> updateUser(User user) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/${user.id}'),
+      body: jsonEncode(user.toJson()),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update user');
+    }
+  }
+
+  Future<void> deleteUser(int userId) async {
+    final response = await http.delete(Uri.parse('$baseUrl/users/$userId'));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete user');
+    }
+  }
+}
+```
+
+The `UserService` class has four methods for CRUD operations: `getUsers`, `createUser`, `updateUser`, and `deleteUser`. Each method makes an HTTP request using the `http` package and returns a `Future` with the result.
+
+Now, let's define the `UserViewModel` class, which is responsible for fetching and updating the user data:
+
+```dart
+class UserViewModel extends ChangeNotifier {
+  final UserService _userService = UserService();
+  List<User> _users = [];
+  bool _loading = false;
+
+  List<User> get users => _users;
+  bool get loading => _loading;
+
+  Future<void> getUsers() async {
+    _loading = true;
+    notifyListeners();
+
+    try {
+      _users = await _userService.getUsers();
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createUser(User user) async {
+    try {
+      final newUser = await _userService.createUser(user);
+      _users.add(newUser);
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+
+
+Similarly, we can define the `updateUser` and `deleteUser` methods in the `UserViewModel` class:
+
+```dart
+  Future<void> updateUser(User user) async {
+    try {
+      await _userService.updateUser(user);
+      final index = _users.indexWhere((u) => u.id == user.id);
+      _users[index] = user;
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> deleteUser(int userId) async {
+    try {
+      await _userService.deleteUser(userId);
+      _users.removeWhere((user) => user.id == userId);
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+  }
+}
+```
+
+Finally, we can use the `UserViewModel` class in the `UserScreen` widget:
+
+```dart
+class UserScreen extends StatefulWidget {
+  const UserScreen({Key? key}) : super(key: key);
+
+  @override
+  _UserScreenState createState() => _UserScreenState();
+}
+
+class _UserScreenState extends State<UserScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  late final UserViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = UserViewModel();
+    _viewModel.getUsers();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('User Management'),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 16),
+          if (_viewModel.loading) const CircularProgressIndicator(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _viewModel.users.length,
+              itemBuilder: (context, index) {
+                final user = _viewModel.users[index];
+                return ListTile(
+                  title: Text(user.name),
+                  subtitle: Text(user.email),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () => _viewModel.deleteUser(user.id),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter an email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        final user = User(
+                          id: _viewModel.users.length + 1,
+                          name: _nameController.text,
+                          email: _emailController.text,
+                        );
+                        _viewModel.createUser(user);
+                        _nameController.clear();
+                        _emailController.clear();
+                      }
+                    },
+                    child: const Text('Add User'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+This `UserScreen` widget displays a list of users fetched from the API using the `UserViewModel` class. It also allows the user to add a new user and delete an existing user. The form validation is done using the `Form`.
+
+Please note that in the code I provided, I assumed that the API methods of the `UserService` class (`createUser`, `getUsers`, `updateUser`, and `deleteUser`) are implemented using the `http` package. You will need to define these methods according to the API you are using.
